@@ -1,13 +1,17 @@
 <?php
 
+use App\Mail\VerificationCodeMail;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 uses(DatabaseTransactions::class);
 
-it('creates a user with the default USER role and returns 201', function () {
+it('starts registration and sends an email verification code', function () {
+    Mail::fake();
+
     $response = $this->postJson('/api/register', [
         'name' => 'Siti Aminah',
         'email' => 'siti@example.com',
@@ -18,17 +22,16 @@ it('creates a user with the default USER role and returns 201', function () {
     ]);
 
     $response
-        ->assertCreated()
+        ->assertAccepted()
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.email', 'siti@example.com')
-        ->assertJsonPath('data.role.role_name', 'USER')
-        ->assertJsonMissingPath('data.phone')
-        ->assertJsonMissingPath('data.nik');
+        ->assertJsonMissingPath('data.code');
 
-    $this->assertDatabaseHas('users', ['email' => 'siti@example.com']);
+    Mail::assertSent(VerificationCodeMail::class, 'siti@example.com');
 
     $user = User::query()->where('email', 'siti@example.com')->firstOrFail();
 
+    expect($user->email_verification_pending)->toBeTrue();
     expect(Hash::check('password123', $user->password))->toBeTrue();
 });
 
@@ -90,9 +93,8 @@ it('ignores an ADMIN role supplied during registration', function () {
     ]);
 
     $response
-        ->assertCreated()
-        ->assertJsonPath('success', true)
-        ->assertJsonPath('data.role.role_name', 'USER');
+        ->assertStatus(202)
+        ->assertJsonPath('success', true);
 
     $this->assertDatabaseHas('users', [
         'email' => 'regular@example.com',

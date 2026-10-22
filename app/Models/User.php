@@ -13,8 +13,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['role_id', 'name', 'email', 'password', 'phone', 'nik'])]
-#[Hidden(['password', 'remember_token', 'phone', 'nik'])]
+#[Fillable(['role_id', 'name', 'email', 'password', 'phone', 'nik', 'google_sub', 'email_verification_pending'])]
+#[Hidden(['password', 'remember_token', 'phone', 'nik', 'google_sub'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -34,6 +34,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'phone' => 'encrypted',
             'nik' => 'encrypted',
+            'email_verification_pending' => 'boolean',
         ];
     }
 
@@ -65,5 +66,10 @@ class User extends Authenticatable
     public function updatedOpenmrsConfigs(): HasMany
     {
         return $this->hasMany(OpenmrsConfig::class, 'updated_by', 'user_id');
+    }
+
+    public function verificationCodes(): HasMany
+    {
+        return $this->hasMany(VerificationCode::class, 'user_id', 'user_id');
     }
 }

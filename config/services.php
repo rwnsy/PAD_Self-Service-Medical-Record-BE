@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'google' => [
+        'id_token_audience' => env('GOOGLE_ID_TOKEN_AUDIENCE'),
+    ],
+
 ];
