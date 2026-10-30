@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -24,11 +26,19 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', Rule::when($this->has('password_confirmation'), ['confirmed'])],
             'phone' => ['nullable', 'string', 'max:25'],
-            'nik' => ['nullable', 'string', 'max:32'],
+            'nik' => [
+                'nullable',
+                'digits:16',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (User::query()->where('nik_hash', User::hashNik((string) $value))->exists()) {
+                        $fail('The NIK has already been registered.');
+                    }
+                },
+            ],
         ];
     }
 
@@ -38,6 +48,10 @@ class RegisterRequest extends FormRequest
             $this->merge([
                 'email' => Str::lower((string) $this->input('email')),
             ]);
+        }
+
+        if ($this->has('nik')) {
+            $this->merge(['nik' => trim((string) $this->input('nik'))]);
         }
     }
 }

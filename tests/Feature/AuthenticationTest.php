@@ -109,5 +109,35 @@ it('returns 422 with validation errors for an incomplete registration payload', 
         ->assertUnprocessable()
         ->assertJsonPath('success', false)
         ->assertJsonPath('message', 'Validation failed.')
-        ->assertJsonValidationErrors(['name', 'email', 'password']);
+        ->assertJsonValidationErrors(['email', 'password']);
+});
+
+it('accepts registration without password confirmation when the client does not send it', function () {
+    Mail::fake();
+
+    $this->postJson('/api/register', [
+        'name' => 'No Confirmation User',
+        'email' => 'no-confirmation@example.com',
+        'password' => 'password123',
+    ])->assertAccepted();
+});
+
+it('allows registration without a name so the user can complete their profile later', function () {
+    Mail::fake();
+
+    $response = $this->postJson('/api/register', [
+        'email' => 'no-name@example.com',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+    ]);
+
+    $response
+        ->assertAccepted()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('data.email', 'no-name@example.com');
+
+    $user = User::query()->where('email', 'no-name@example.com')->firstOrFail();
+
+    expect($user->name)->toBeNull();
+    expect($user->email_verification_pending)->toBeTrue();
 });

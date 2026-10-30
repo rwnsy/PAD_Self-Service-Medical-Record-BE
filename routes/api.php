@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\HealthRecordController;
+use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -15,5 +17,7 @@ Route::post('/auth/google', [AuthController::class, 'google']);
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::match(['put', 'patch'], '/profile', [ProfileController::class, 'update']);
+    Route::apiResource('health-records', HealthRecordController::class)
+        ->parameters(['health-records' => 'healthRecordId']);
 });
-
