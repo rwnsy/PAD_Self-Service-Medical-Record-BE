@@ -54,6 +54,11 @@ class User extends Authenticatable
         return $this->hasMany(HealthRecord::class, 'user_id', 'user_id');
     }
 
+    public function personalMedicalRecords(): HasMany
+    {
+        return $this->hasMany(PersonalMedicalRecord::class, 'user_id', 'user_id');
+    }
+
     public function photos(): HasMany
     {
         return $this->hasMany(Photo::class, 'user_id', 'user_id');
