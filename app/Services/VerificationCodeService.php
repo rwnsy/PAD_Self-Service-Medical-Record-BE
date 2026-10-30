@@ -126,10 +126,8 @@ class VerificationCodeService
             $message = match ($result['error']) {
                 'expired' => 'The verification code has expired.',
                 'incorrect' => 'The verification code is incorrect.',
-                'max_attempts' =>
-                    'The verification code has reached its maximum number of attempts.',
-                default =>
-                    'The verification code is invalid or has already been used.',
+                'max_attempts' => 'The verification code has reached its maximum number of attempts.',
+                default => 'The verification code is invalid or has already been used.',
             };
 
             throw ValidationException::withMessages([
@@ -139,6 +137,7 @@ class VerificationCodeService
 
         return $result['code'];
     }
+
     public function createPasswordResetGrant(User $user, string $plainCode): string
     {
         $verificationCode = $this->consume($user, VerificationCode::PasswordReset, $plainCode);

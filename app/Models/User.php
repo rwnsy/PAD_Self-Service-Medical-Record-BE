@@ -13,8 +13,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['role_id', 'name', 'email', 'password', 'phone', 'nik', 'google_sub', 'email_verification_pending'])]
-#[Hidden(['password', 'remember_token', 'phone', 'nik', 'google_sub'])]
+#[Fillable(['role_id', 'name', 'email', 'password', 'phone', 'nik', 'nik_hash', 'gender', 'date_of_birth', 'google_sub', 'email_verification_pending'])]
+#[Hidden(['password', 'remember_token', 'phone', 'nik', 'nik_hash', 'google_sub'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -35,7 +35,13 @@ class User extends Authenticatable
             'phone' => 'encrypted',
             'nik' => 'encrypted',
             'email_verification_pending' => 'boolean',
+            'date_of_birth' => 'date:Y-m-d',
         ];
+    }
+
+    public static function hashNik(string $nik): string
+    {
+        return hash_hmac('sha256', $nik, (string) config('app.key'));
     }
 
     public function role(): BelongsTo

@@ -30,9 +30,14 @@ class AuthController extends Controller
     public function register(RegisterRequest $request, VerificationCodeService $verificationCodes): JsonResponse
     {
         $userRole = Role::query()->firstOrCreate(['role_name' => 'USER']);
+        $attributes = $request->safe()->only(['name', 'email', 'password', 'phone', 'nik']);
+
+        if (isset($attributes['nik'])) {
+            $attributes['nik_hash'] = User::hashNik($attributes['nik']);
+        }
 
         $user = User::query()->create([
-            ...$request->safe()->only(['name', 'email', 'password', 'phone', 'nik']),
+            ...$attributes,
             'role_id' => $userRole->role_id,
             'email_verification_pending' => true,
         ]);
@@ -217,7 +222,7 @@ class AuthController extends Controller
 
             $userRole = Role::query()->firstOrCreate(['role_name' => 'USER']);
 
-            $newUser = new User();
+            $newUser = new User;
 
             $newUser->forceFill([
                 'role_id' => $userRole->role_id,
@@ -227,7 +232,7 @@ class AuthController extends Controller
                 'google_sub' => $claims['sub'],
                 'email_verified_at' => now(),
                 'email_verification_pending' => false,
-            ]); 
+            ]);
             $newUser->save();
 
             return $newUser;
