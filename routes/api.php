@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HealthRecordController;
+use App\Http\Controllers\Api\MedicalRecordController;
+use App\Http\Controllers\Api\PersonalMedicalRecordController;
 use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,4 +23,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::match(['put', 'patch'], '/profile', [ProfileController::class, 'update']);
     Route::apiResource('health-records', HealthRecordController::class)
         ->parameters(['health-records' => 'healthRecordId']);
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/medical-records', [MedicalRecordController::class, 'index']);
+    Route::apiResource('personal-medical-records', PersonalMedicalRecordController::class)
+        ->parameters(['personal-medical-records' => 'personalMedicalRecordId']);
 });

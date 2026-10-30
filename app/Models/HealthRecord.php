@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Database\Factories\HealthRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -47,6 +48,27 @@ class HealthRecord extends Model
     }
 
     /**
+     * Pastikan recorded_at selalu dinormalisasi ke zona waktu Asia/Jakarta
+     * sebelum disimpan ke database, sehingga timestamp dari berbagai format
+     * (ISO-8601 UTC, datetime string lokal, maupun objek Carbon) tersimpan
+     * dengan nilai kalender dan jam yang konsisten di PostgreSQL.
+     */
+    protected function recordedAt(): Attribute
+    {
+        return Attribute::set(function (mixed $value): mixed {
+            if ($value instanceof \DateTimeInterface) {
+                return Carbon::instance($value)->setTimezone('Asia/Jakarta');
+            }
+
+            if (is_string($value) && $value !== '') {
+                return Carbon::parse($value, 'Asia/Jakarta')->setTimezone('Asia/Jakarta');
+            }
+
+            return $value;
+        });
+    }
+
+    /**
      * Pesan informatif BMI dalam Bahasa Indonesia, sesuai kategori.
      * Bukan diagnosis medis.
      */
@@ -74,7 +96,11 @@ class HealthRecord extends Model
                 return null;
             }
 
-            return $this->recorded_at->setTimezone('Asia/Jakarta')->format('Y-m-d');
+            $date = $this->recorded_at instanceof \DateTimeInterface
+                ? Carbon::instance($this->recorded_at)
+                : Carbon::parse($this->recorded_at, 'Asia/Jakarta');
+
+            return $date->setTimezone('Asia/Jakarta')->format('Y-m-d');
         });
     }
 }

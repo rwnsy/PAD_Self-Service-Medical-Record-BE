@@ -644,3 +644,144 @@ test('providing only systolic without diastolic is rejected', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['systolic']);
 });
+
+test('health records can be filtered by warning_status', function () {
+    $user = healthRecordUser();
+    Sanctum::actingAs($user);
+
+    $normalRecord = HealthRecord::factory()->for($user, 'user')->create([
+        'systolic' => 120, 'diastolic' => 75, 'warning_status' => 'NORMAL',
+    ]);
+    $urgentRecord = HealthRecord::factory()->for($user, 'user')->create([
+        'systolic' => 160, 'diastolic' => 100, 'warning_status' => 'URGENT',
+    ]);
+    $attentionRecord = HealthRecord::factory()->for($user, 'user')->create([
+        'systolic' => 135, 'diastolic' => 85, 'warning_status' => 'ATTENTION',
+    ]);
+
+    $response = $this->getJson('/api/health-records?warning_status=URGENT');
+
+    $response->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonCount(1, 'data.data')
+        ->assertJsonPath('data.data.0.health_record_id', $urgentRecord->health_record_id);
+
+    $responseAttention = $this->getJson('/api/health-records?warning_status=ATTENTION');
+    $responseAttention->assertOk()
+        ->assertJsonCount(1, 'data.data')
+        ->assertJsonPath('data.data.0.health_record_id', $attentionRecord->health_record_id);
+});
+
+test('filtering by invalid warning_status returns validation error', function () {
+    $user = healthRecordUser();
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/health-records?warning_status=INVALID')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['warning_status']);
+});
+
+// ---------------------------------------------------------------------------
+// Audit Timezone: Validasi Batas Tanggal Kalender Asia/Jakarta (00:00 - 23:59 WIB)
+// ---------------------------------------------------------------------------
+
+test('records created across all hours of WIB day (00:00 to 23:59) are accurately filtered', function () {
+    $user = healthRecordUser();
+    Sanctum::actingAs($user);
+
+    // Records tepat pada tanggal 2026-10-25 WIB di berbagai jam
+    $midnight = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-25 00:00:00',
+    ]);
+    $earlyMorning1 = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-25 02:15:00',
+    ]);
+    $earlyMorning2 = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-25 06:59:59',
+    ]);
+    $noon = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-25 12:00:00',
+    ]);
+    $evening = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-25 20:30:00',
+    ]);
+    $lateNight = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-25 23:59:59',
+    ]);
+
+    // Records di luar batas (kemarin malam & besok dini hari)
+    $yesterdayNight = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-24 23:59:59',
+    ]);
+    $tomorrowMorning = HealthRecord::factory()->for($user, 'user')->create([
+        'recorded_at' => '2026-10-26 00:00:00',
+    ]);
+
+    $response = $this->getJson('/api/health-records?recorded_from=2026-10-25&recorded_to=2026-10-25&per_page=50');
+
+    $response->assertOk()
+        ->assertJsonPath('success', true);
+
+    $ids = collect($response->json('data.data'))->pluck('health_record_id')->toArray();
+
+    // Seluruh record dalam hari 2026-10-25 harus ditemukan
+    expect($ids)->toContain($midnight->health_record_id);
+    expect($ids)->toContain($earlyMorning1->health_record_id);
+    expect($ids)->toContain($earlyMorning2->health_record_id);
+    expect($ids)->toContain($noon->health_record_id);
+    expect($ids)->toContain($evening->health_record_id);
+    expect($ids)->toContain($lateNight->health_record_id);
+
+    // Record kemarin dan besok tidak boleh ikut masuk
+    expect($ids)->not->toContain($yesterdayNight->health_record_id);
+    expect($ids)->not->toContain($tomorrowMorning->health_record_id);
+});
+
+test('early morning UTC ISO timestamp does not shift to previous calendar day in Asia/Jakarta', function () {
+    $user = healthRecordUser();
+    Sanctum::actingAs($user);
+
+    // 2026-10-24T19:00:00Z dalam UTC = 2026-10-25 02:00:00 WIB (pukul 2 pagi tanggal 25)
+    $response = $this->postJson('/api/health-records', [
+        'height' => 170,
+        'weight' => 65,
+        'recorded_at' => '2026-10-24T19:00:00Z',
+    ]);
+
+    $response->assertCreated();
+    expect($response->json('data.recorded_date'))->toBe('2026-10-25');
+    $recordId = $response->json('data.health_record_id');
+
+    // Filter tanggal 25 harus menemukan record ini
+    $findToday = $this->getJson('/api/health-records?recorded_from=2026-10-25&recorded_to=2026-10-25');
+    $findToday->assertOk();
+    $todayIds = collect($findToday->json('data.data'))->pluck('health_record_id')->toArray();
+    expect($todayIds)->toContain($recordId);
+
+    // Filter tanggal 24 tidak boleh menemukan record ini
+    $findYesterday = $this->getJson('/api/health-records?recorded_from=2026-10-24&recorded_to=2026-10-24');
+    $findYesterday->assertOk();
+    $yesterdayIds = collect($findYesterday->json('data.data'))->pluck('health_record_id')->toArray();
+    expect($yesterdayIds)->not->toContain($recordId);
+});
+
+test('midnight boundary UTC timestamp at 17:00 UTC preserves 00:00 WIB next calendar day', function () {
+    $user = healthRecordUser();
+    Sanctum::actingAs($user);
+
+    // 2026-10-24T17:00:00Z dalam UTC = 2026-10-25 00:00:00 WIB tepat
+    $response = $this->postJson('/api/health-records', [
+        'height' => 170,
+        'weight' => 65,
+        'recorded_at' => '2026-10-24T17:00:00Z',
+    ]);
+
+    $response->assertCreated();
+    expect($response->json('data.recorded_date'))->toBe('2026-10-25');
+    $recordId = $response->json('data.health_record_id');
+
+    $findToday = $this->getJson('/api/health-records?recorded_from=2026-10-25&recorded_to=2026-10-25');
+    $findToday->assertOk();
+    $todayIds = collect($findToday->json('data.data'))->pluck('health_record_id')->toArray();
+    expect($todayIds)->toContain($recordId);
+});

@@ -25,6 +25,7 @@ class IndexHealthRecordRequest extends FormRequest
             'recorded_from' => ['nullable', 'date'],
             'recorded_to' => ['nullable', 'date', 'after_or_equal:recorded_from'],
             'per_page' => ['nullable', 'integer', 'between:1,100'],
+            'warning_status' => ['nullable', 'string', 'in:NORMAL,ATTENTION,URGENT'],
         ];
     }
 }

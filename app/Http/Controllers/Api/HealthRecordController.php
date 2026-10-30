@@ -25,7 +25,7 @@ class HealthRecordController extends Controller
                 fn ($query) => $query->where(
                     'recorded_at',
                     '>=',
-                    Carbon::parse($validated['recorded_from'], 'Asia/Jakarta')->startOfDay()->utc(),
+                    Carbon::parse($validated['recorded_from'], 'Asia/Jakarta')->startOfDay(),
                 ),
             )
             ->when(
@@ -33,8 +33,12 @@ class HealthRecordController extends Controller
                 fn ($query) => $query->where(
                     'recorded_at',
                     '<',
-                    Carbon::parse($validated['recorded_to'], 'Asia/Jakarta')->startOfDay()->addDay()->utc(),
+                    Carbon::parse($validated['recorded_to'], 'Asia/Jakarta')->startOfDay()->addDay(),
                 ),
+            )
+            ->when(
+                isset($validated['warning_status']),
+                fn ($query) => $query->where('warning_status', $validated['warning_status']),
             )
             ->orderByDesc('recorded_at')
             ->paginate($validated['per_page'] ?? 15);
