@@ -50,4 +50,3 @@ class PersonalMedicalRecord extends Model
         return Attribute::get(fn (): string => 'Catatan Mandiri');
     }
 }
-

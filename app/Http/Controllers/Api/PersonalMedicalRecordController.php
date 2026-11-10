@@ -108,4 +108,3 @@ class PersonalMedicalRecordController extends Controller
         ], $status);
     }
 }
-

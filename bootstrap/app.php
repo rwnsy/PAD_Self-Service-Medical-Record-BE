@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureNonProductionEnvironment;
 use App\Http\Middleware\EnsureUserHasRole;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
+            'non-production' => EnsureNonProductionEnvironment::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
