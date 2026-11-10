@@ -6,21 +6,26 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['role_id', 'name', 'email', 'password', 'phone', 'nik', 'nik_hash', 'gender', 'date_of_birth', 'google_sub', 'email_verification_pending'])]
-#[Hidden(['password', 'remember_token', 'phone', 'nik', 'nik_hash', 'google_sub'])]
+#[Hidden(['password', 'remember_token', 'phone', 'nik', 'nik_hash', 'google_sub', 'avatar_path'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $primaryKey = 'user_id';
+
+    /** @var list<string> */
+    protected $appends = ['avatar_url'];
 
     /**
      * Get the attributes that should be cast.
@@ -42,6 +47,24 @@ class User extends Authenticatable
     public static function hashNik(string $nik): string
     {
         return hash_hmac('sha256', $nik, (string) config('app.key'));
+    }
+
+    /**
+     * URL foto profil pengguna.
+     * Mengembalikan URL publik file yang tersimpan jika ada,
+     * atau avatar default lokal (SVG) tanpa mengirim data ke pihak ketiga.
+     */
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(function (): string {
+            if ($this->avatar_path && Storage::disk('public')->exists($this->avatar_path)) {
+                return Storage::disk('public')->url($this->avatar_path);
+            }
+
+            $name = $this->name ? trim($this->name) : 'User';
+
+            return route('avatar.default', ['name' => $name]);
+        });
     }
 
     public function role(): BelongsTo

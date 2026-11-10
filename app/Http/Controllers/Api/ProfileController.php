@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Requests\UploadProfilePhotoRequest;
 use App\Models\User;
 use App\Models\VerificationCode;
 use App\Services\VerificationCodeService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ProfileController extends Controller
@@ -53,6 +57,57 @@ class ProfileController extends Controller
         }
 
         return $this->success('Profile updated successfully.', $user->fresh());
+    }
+
+    public function uploadPhoto(UploadProfilePhotoRequest $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $file = $request->file('photo');
+
+        $extension = $file->getClientOriginalExtension() ?: 'jpg';
+        $filename = (string) Str::uuid().'.'.strtolower($extension);
+        $path = $file->storeAs('avatars', $filename, 'public');
+
+        if (! $path) {
+            return $this->failure('Gagal menyimpan file foto profil.', 500);
+        }
+
+        $oldPath = $user->avatar_path;
+
+        // Simpan perubahan ke database terlebih dahulu
+        $user->forceFill(['avatar_path' => $path])->save();
+
+        // Hapus foto lama hanya setelah penyimpanan foto baru berhasil
+        if ($oldPath && $oldPath !== $path && Storage::disk('public')->exists($oldPath)) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        $freshUser = $user->fresh();
+
+        return $this->success('Foto profil berhasil diperbarui.', [
+            'avatar_url' => $freshUser->avatar_url,
+            'user' => $freshUser,
+        ]);
+    }
+
+    public function deletePhoto(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $oldPath = $user->avatar_path;
+
+        if ($oldPath && Storage::disk('public')->exists($oldPath)) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        $user->forceFill(['avatar_path' => null])->save();
+        $freshUser = $user->fresh();
+
+        return $this->success('Foto profil berhasil dihapus.', [
+            'avatar_url' => $freshUser->avatar_url,
+            'user' => $freshUser,
+        ]);
     }
 
     private function success(string $message, mixed $data = null, int $status = 200): JsonResponse

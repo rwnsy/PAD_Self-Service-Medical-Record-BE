@@ -376,4 +376,3 @@ test('personal medical records are isolated and never recorded as OpenMRS integr
     // Pastikan integration_logs tidak bertambah
     expect(IntegrationLog::query()->count())->toBe($initialLogCount);
 });
-

@@ -89,7 +89,10 @@ class DashboardController extends Controller
             'message' => 'Dashboard data retrieved successfully.',
             'data' => [
                 'period' => $period,
-                'profile' => $user->only(['user_id', 'name', 'email', 'gender', 'date_of_birth']),
+                'profile' => [
+                    ...$user->only(['user_id', 'name', 'email', 'gender', 'date_of_birth']),
+                    'avatar_url' => $user->avatar_url,
+                ],
                 'summary' => [
                     'latest_bmi' => $latestBmi ? [
                         'health_record_id' => $latestBmi->health_record_id,
