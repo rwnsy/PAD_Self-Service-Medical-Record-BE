@@ -1,0 +1,1428 @@
+{
+  "info": {
+    "_postman_id": "8bfa5113-228f-4318-bfb6-b5eb2913e2f5",
+    "name": "Self Medical Record API",
+    "description": "Postman collection for Self Medical Record API. Set base_url to the API root (including /api), e.g. http://127.0.0.1:8000/api. Admin requests use /admin/... paths.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "health_record_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "personal_medical_record_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "filename",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "food_image_url",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"budi@example.com\",\n  \"password\": \"Rahasia123!\",\n  \"password_confirmation\": \"Rahasia123!\",\n  \"phone\": \"08123456789\",\n  \"nik\": \"3201010101010001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@example.com\",\n  \"password\": \"Rahasia123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email/verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "email",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resend Email Code",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email/resend-code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "email",
+                "resend-code"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/password/forgot",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "password",
+                "forgot"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Reset Code",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@example.com\",\n  \"code\": \"654321\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/password/verify-code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "password",
+                "verify-code"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"budi@example.com\",\n  \"code\": \"654321\",\n  \"password\": \"PasswordBaru123!\",\n  \"password_confirmation\": \"PasswordBaru123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/password/reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "password",
+                "reset"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Google Sign-In",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"eyJhbGciOiJSUzI1NiIs...\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/google",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "google"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Profile",
+      "item": [
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"gender\": \"MALE\",\n  \"date_of_birth\": \"1995-08-17\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload Profile Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/profile/photo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profile",
+                "photo"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Profile Photo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profile/photo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profile",
+                "photo"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Default SVG Avatar",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/avatar/default?name=Budi+Santoso",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar",
+                "default"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Budi Santoso"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/dashboard?period=month",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Self Assessment",
+      "item": [
+        {
+          "name": "List Health Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health-records?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health-records"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15"
+                },
+                {
+                  "key": "recorded_from",
+                  "value": "2026-10-01",
+                  "disabled": true
+                },
+                {
+                  "key": "recorded_to",
+                  "value": "2026-10-31",
+                  "disabled": true
+                },
+                {
+                  "key": "warning_status",
+                  "value": "NORMAL",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Health Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"height\": 172.5,\n  \"weight\": 68.0,\n  \"systolic\": 120,\n  \"diastolic\": 80,\n  \"recorded_at\": \"2026-10-25 14:30:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/health-records",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health-records"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Health Record Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health-records/{{health_record_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health-records",
+                "{{health_record_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Health Record",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"height\": 173.0,\n  \"weight\": 67.5,\n  \"systolic\": 118,\n  \"diastolic\": 78\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/health-records/{{health_record_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health-records",
+                "{{health_record_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Health Record",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health-records/{{health_record_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health-records",
+                "{{health_record_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Medical History (OpenMRS)",
+      "item": [
+        {
+          "name": "Get OpenMRS Clinical Encounters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/medical-records?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "medical-records"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Personal Medical Records",
+      "item": [
+        {
+          "name": "List Personal Medical Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/personal-medical-records?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "personal-medical-records"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Personal Medical Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visit_date\": \"2026-10-20\",\n  \"facility_name\": \"RS Harapan Sehat\",\n  \"complaint\": \"Nyeri kepala dan batuk pilek\",\n  \"medications\": \"Paracetamol 500mg, Ambroxol 30mg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/personal-medical-records",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "personal-medical-records"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Personal Medical Record Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/personal-medical-records/{{personal_medical_record_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "personal-medical-records",
+                "{{personal_medical_record_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Personal Medical Record",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facility_name\": \"Klinik Pratama Sehat Sejahtera\",\n  \"complaint\": \"Pemeriksaan tensi rutin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/personal-medical-records/{{personal_medical_record_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "personal-medical-records",
+                "{{personal_medical_record_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Personal Medical Record",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/personal-medical-records/{{personal_medical_record_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "personal-medical-records",
+                "{{personal_medical_record_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Calorie Estimation",
+      "item": [
+        {
+          "name": "Estimate Food Calories (Upload)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/calorie-estimation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "calorie-estimation"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const signedUrl = body?.data?.image_url || body?.data?.image;",
+                  "if (pm.response.code >= 200 && pm.response.code < 300 && typeof signedUrl === \"string\" && signedUrl.includes(\"signature=\")) {",
+                  "  pm.collectionVariables.set(\"food_image_url\", signedUrl);",
+                  "} else {",
+                  "  console.warn(\"Signed image URL was not found in the upload response.\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Signed Food Image",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{food_image_url}}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Admin Management",
+      "item": [
+        {
+          "name": "Admin Dashboard",
+          "item": [
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "query": {
+                    "key": "period",
+                    "description": "week|month|3months|6months",
+                    "value": "month"
+                  },
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/dashboard",
+                  "path": [
+                    "admin",
+                    "dashboard"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "Get Admin Dashboard",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Management",
+          "item": [
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "query": [
+                    {
+                      "key": "per_page",
+                      "description": "Items per page (max 100)",
+                      "value": "15"
+                    },
+                    {
+                      "key": "search",
+                      "description": "Search by name or email",
+                      "value": ""
+                    },
+                    {
+                      "key": "role",
+                      "description": "Filter by role name e.g. USER or ADMIN",
+                      "value": ""
+                    }
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/users",
+                  "path": [
+                    "admin",
+                    "users"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "List Users",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            },
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/users/1",
+                  "path": [
+                    "admin",
+                    "users",
+                    "1"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "Get User Detail",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Health Monitoring",
+          "item": [
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "query": {
+                    "key": "per_page",
+                    "description": "Items per page",
+                    "value": "15"
+                  },
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/users/1/health-records",
+                  "path": [
+                    "admin",
+                    "users",
+                    "1",
+                    "health-records"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "User Health Records",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            },
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "query": {
+                    "key": "per_page",
+                    "description": "Items per page",
+                    "value": "15"
+                  },
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/users/1/personal-medical-records",
+                  "path": [
+                    "admin",
+                    "users",
+                    "1",
+                    "personal-medical-records"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "User Personal Medical Records",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activity Logs",
+          "item": [
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "query": [
+                    {
+                      "key": "per_page",
+                      "description": "Items per page (max 100)",
+                      "value": "20"
+                    },
+                    {
+                      "key": "action",
+                      "description": "Filter by action e.g. LOGIN",
+                      "value": ""
+                    },
+                    {
+                      "key": "user_id",
+                      "description": "Filter by user ID",
+                      "value": ""
+                    },
+                    {
+                      "key": "date_from",
+                      "description": "YYYY-MM-DD",
+                      "value": ""
+                    },
+                    {
+                      "key": "date_to",
+                      "description": "YYYY-MM-DD",
+                      "value": ""
+                    }
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/activity-logs",
+                  "path": [
+                    "admin",
+                    "activity-logs"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "List Activity Logs",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            }
+          ]
+        },
+        {
+          "name": "OpenMRS Configuration",
+          "item": [
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/openmrs/config",
+                  "path": [
+                    "admin",
+                    "openmrs",
+                    "config"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "Get OpenMRS Config",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            },
+            {
+              "request": {
+                "body": {
+                  "raw": "{\r\n    \"credential\":  {\r\n                       \"password\":  \"your-password\",\r\n                       \"username\":  \"admin\"\r\n                   },\r\n    \"is_active\":  true,\r\n    \"endpoint_url\":  \"http://openmrs.example.com\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  },
+                  "mode": "raw"
+                },
+                "method": "PUT",
+                "url": {
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/openmrs/config",
+                  "path": [
+                    "admin",
+                    "openmrs",
+                    "config"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "Update OpenMRS Config",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            },
+            {
+              "request": {
+                "method": "POST",
+                "url": {
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/test-connection",
+                  "path": [
+                    "admin",
+                    "test-connection"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "Test OpenMRS Connection",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Integration Logs",
+          "item": [
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "query": [
+                    {
+                      "key": "per_page",
+                      "description": "Items per page (max 100)",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "description": "Filter by status e.g. SUCCESS",
+                      "value": ""
+                    },
+                    {
+                      "key": "operation",
+                      "description": "Filter by operation e.g. PATIENT_LOOKUP",
+                      "value": ""
+                    },
+                    {
+                      "key": "date_from",
+                      "description": "YYYY-MM-DD",
+                      "value": ""
+                    },
+                    {
+                      "key": "date_to",
+                      "description": "YYYY-MM-DD",
+                      "value": ""
+                    }
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/integration-logs",
+                  "path": [
+                    "admin",
+                    "integration-logs"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "List Integration Logs",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            }
+          ]
+        },
+        {
+          "name": "System Logs",
+          "item": [
+            {
+              "request": {
+                "method": "GET",
+                "url": {
+                  "query": [
+                    {
+                      "key": "level",
+                      "description": "Filter by level: error|warning|info|debug",
+                      "value": ""
+                    },
+                    {
+                      "key": "limit",
+                      "description": "Max entries to return (max 200)",
+                      "value": "50"
+                    }
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "raw": "{{base_url}}/admin/system-logs",
+                  "path": [
+                    "admin",
+                    "system-logs"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "name": "Get System Logs",
+              "response": [],
+              "auth": {
+                "bearer": [
+                  {
+                    "key": "token",
+                    "type": "string",
+                    "value": "{{token}}"
+                  }
+                ],
+                "type": "bearer"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
