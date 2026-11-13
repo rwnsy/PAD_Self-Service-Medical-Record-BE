@@ -39,4 +39,11 @@ return [
         'id_token_audience' => env('GOOGLE_ID_TOKEN_AUDIENCE'),
     ],
 
+    'openmrs' => [
+        'allowed_hosts' => array_filter(array_map('trim', explode(',', (string) env('OPENMRS_ALLOWED_HOSTS', '')))),
+        'enforce_https' => (bool) env('OPENMRS_ENFORCE_HTTPS', false),
+        'allow_local_network' => env('OPENMRS_ALLOW_LOCAL') !== null ? (bool) env('OPENMRS_ALLOW_LOCAL') : null,
+        'strict_ssrf' => (bool) env('OPENMRS_STRICT_SSRF', false),
+    ],
+
 ];

@@ -5,8 +5,9 @@ info:
     RESTful API specification for Self Medical Record application.
     Supports user authentication, self-assessment (BMI & blood pressure),
     dashboard summaries, clinical records integration (OpenMRS), personal
-    medical records, profile management, and food calorie estimation.
-  version: 1.0.0
+    medical records, profile management, food calorie estimation, and
+    admin management endpoints.
+  version: 1.1.0
   contact:
     name: Backend Engineering Team
 
@@ -939,6 +940,490 @@ paths:
         '404':
           description: Photo not found or purged by prune scheduler
 
+  # ==========================================================
+  # ADMIN MANAGEMENT
+  # ==========================================================
+  /admin/dashboard:
+    get:
+      summary: Admin dashboard — aggregated platform statistics
+      tags: [Admin Management]
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, 3months, 6months]
+            default: month
+      responses:
+        '200':
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      period:
+                        type: string
+                        example: month
+                      users:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          new_in_period:
+                            type: integer
+                      health_records:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          in_period:
+                            type: integer
+                          warning_distribution:
+                            type: object
+                      personal_medical_records:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                      integration:
+                        type: object
+                        properties:
+                          status_distribution:
+                            type: object
+                      activity_logs:
+                        type: object
+                        properties:
+                          count_in_period:
+                            type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/users:
+    get:
+      summary: List all users (no PII)
+      tags: [Admin Management]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+            example: USER
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AdminUserSafe'
+                      total:
+                        type: integer
+                      per_page:
+                        type: integer
+                      current_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/users/{userId}:
+    get:
+      summary: Get a single user (no PII)
+      tags: [Admin Management]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AdminUserSafe'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/users/{userId}/health-records:
+    get:
+      summary: Health records for a specific user
+      tags: [Admin Management]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated health records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedHealthRecords'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/users/{userId}/personal-medical-records:
+    get:
+      summary: Personal medical records for a specific user
+      tags: [Admin Management]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated personal records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonalRecords'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/activity-logs:
+    get:
+      summary: List activity logs
+      tags: [Admin Management]
+      parameters:
+        - name: action
+          in: query
+          schema:
+            type: string
+            example: LOGIN
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated activity logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ActivityLogEntry'
+                      total:
+                        type: integer
+                      per_page:
+                        type: integer
+                      current_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/integration-logs:
+    get:
+      summary: List integration logs (OpenMRS)
+      tags: [Admin Management]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            example: SUCCESS
+        - name: operation
+          in: query
+          schema:
+            type: string
+            example: PATIENT_LOOKUP
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated integration logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/IntegrationLogEntry'
+                      total:
+                        type: integer
+                      per_page:
+                        type: integer
+                      current_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/openmrs/config:
+    get:
+      summary: Get OpenMRS configuration (credential never returned)
+      tags: [Admin Management]
+      responses:
+        '200':
+          description: OpenMRS config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/OpenMrsConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update OpenMRS configuration
+      tags: [Admin Management]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint_url, credential]
+              properties:
+                endpoint_url:
+                  type: string
+                  format: uri
+                  example: http://openmrs.example.com
+                credential:
+                  type: object
+                  required: [username, password]
+                  properties:
+                    username:
+                      type: string
+                      example: admin
+                    password:
+                      type: string
+                      format: password
+                      example: Admin1234!
+                is_active:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Configuration updated — credential NOT returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/OpenMrsConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/openmrs/test-connection:
+    post:
+      summary: Test OpenMRS connection
+      tags: [Admin Management]
+      responses:
+        '200':
+          description: Connection and authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      connected:
+                        type: boolean
+                      authenticated:
+                        type: boolean
+                      status_code:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: No active config or credential invalid
+        '503':
+          description: Connection failed / timeout
+
+  /admin/system-logs:
+    get:
+      summary: View operational system logs (sanitized)
+      tags: [Admin Management]
+      parameters:
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [emergency, alert, critical, error, warning, notice, info, debug]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        '200':
+          description: Sanitized system log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            timestamp:
+                              type: string
+                            level:
+                              type: string
+                            message:
+                              type: string
+                      log_exists:
+                        type: boolean
+                      log_size_kb:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Invalid log level filter
+        '429':
+          description: Too many requests (throttled)
+
 # ==========================================================
 # COMPONENTS & SCHEMAS
 # ==========================================================
@@ -1337,4 +1822,120 @@ components:
             per_page:
               type: integer
               example: 15
+
+    AdminUserSafe:
+      type: object
+      description: User object with PII fields removed for admin consumption.
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Budi Santoso
+        email:
+          type: string
+          format: email
+          example: budi@example.com
+        gender:
+          type: string
+          nullable: true
+          example: L
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+          example: "1990-01-15"
+        avatar_url:
+          type: string
+          example: http://localhost/api/avatar/default?name=Budi+Santoso
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        email_verification_pending:
+          type: boolean
+          example: false
+        role:
+          type: string
+          example: USER
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ActivityLogEntry:
+      type: object
+      properties:
+        activity_id:
+          type: integer
+          example: 42
+        user_id:
+          type: integer
+          nullable: true
+          example: 7
+        action:
+          type: string
+          example: LOGIN
+        description:
+          type: string
+          nullable: true
+          example: User logged in via email/password.
+        created_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/AdminUserSafe'
+
+    IntegrationLogEntry:
+      type: object
+      properties:
+        log_id:
+          type: integer
+          example: 5
+        user_id:
+          type: integer
+          nullable: true
+          example: 3
+        operation:
+          type: string
+          example: PATIENT_LOOKUP
+        status:
+          type: string
+          example: SUCCESS
+        attempted_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/AdminUserSafe'
+
+    OpenMrsConfigResponse:
+      type: object
+      description: OpenMRS configuration. Credential/password fields are NEVER returned.
+      properties:
+        config_id:
+          type: integer
+          example: 1
+        endpoint_url:
+          type: string
+          format: uri
+          example: http://openmrs.example.com
+        is_active:
+          type: boolean
+          example: true
+        updated_by:
+          type: integer
+          nullable: true
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 

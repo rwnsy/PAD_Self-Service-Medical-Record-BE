@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Requests\UploadProfilePhotoRequest;
 use App\Models\User;
 use App\Models\VerificationCode;
+use App\Services\ActivityLogService;
 use App\Services\VerificationCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,10 @@ class ProfileController extends Controller
         }
 
         $user->forceFill($validated)->save();
+
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($user->user_id, 'PROFILE_UPDATE', 'User updated profile information.');
 
         if ($emailChanged) {
             try {
@@ -85,6 +90,10 @@ class ProfileController extends Controller
 
         $freshUser = $user->fresh();
 
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($user->user_id, 'PROFILE_PHOTO_UPLOAD', 'User uploaded a new profile photo.');
+
         return $this->success('Foto profil berhasil diperbarui.', [
             'avatar_url' => $freshUser->avatar_url,
             'user' => $freshUser,
@@ -103,6 +112,10 @@ class ProfileController extends Controller
 
         $user->forceFill(['avatar_path' => null])->save();
         $freshUser = $user->fresh();
+
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($user->user_id, 'PROFILE_PHOTO_DELETE', 'User deleted their profile photo.');
 
         return $this->success('Foto profil berhasil dihapus.', [
             'avatar_url' => $freshUser->avatar_url,
