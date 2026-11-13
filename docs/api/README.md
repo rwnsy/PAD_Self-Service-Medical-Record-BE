@@ -5,9 +5,9 @@ This directory contains the formal API specifications and integration artifacts 
 ## Files
 
 1. **`openapi.yaml`**  
-   OpenAPI 3.1.0 specification documenting all 24 production API endpoints, request/response models, validation rules, authentication schemes, and synthetic examples.
+   OpenAPI 3.1.0 specification documenting all 35 production and admin API endpoints, request/response models, validation rules, authentication schemes, and synthetic examples.
 2. **`self-medical-record.postman_collection.json`**  
-   Postman Collection v2.1 containing pre-configured requests grouped by module with environment variables.
+   Postman Collection v2.1 containing pre-configured requests grouped across 8 modules (including Admin Management) with environment variables.
 
 ---
 

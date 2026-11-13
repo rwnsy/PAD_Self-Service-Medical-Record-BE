@@ -7,6 +7,7 @@ use App\Http\Requests\IndexPersonalMedicalRecordRequest;
 use App\Http\Requests\StorePersonalMedicalRecordRequest;
 use App\Http\Requests\UpdatePersonalMedicalRecordRequest;
 use App\Models\PersonalMedicalRecord;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -42,6 +43,10 @@ class PersonalMedicalRecordController extends Controller
             'source' => 'USER_REPORTED',
         ]);
 
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($request->user()->user_id, 'PERSONAL_RECORD_CREATE', "Personal medical record #{$record->personal_medical_record_id} created.");
+
         return $this->success('Catatan medis mandiri berhasil ditambahkan.', $record, 201);
     }
 
@@ -66,6 +71,10 @@ class PersonalMedicalRecordController extends Controller
 
         $record->update($request->validated());
 
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($request->user()->user_id, 'PERSONAL_RECORD_UPDATE', "Personal medical record #{$personalMedicalRecordId} updated.");
+
         return $this->success('Catatan medis mandiri berhasil diperbarui.', $record->fresh());
     }
 
@@ -78,6 +87,10 @@ class PersonalMedicalRecordController extends Controller
         }
 
         $record->delete();
+
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($request->user()->user_id, 'PERSONAL_RECORD_DELETE', "Personal medical record #{$personalMedicalRecordId} deleted.");
 
         return $this->success('Catatan medis mandiri berhasil dihapus.');
     }

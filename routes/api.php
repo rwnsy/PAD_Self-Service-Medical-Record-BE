@@ -1,5 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminIntegrationLogController;
+use App\Http\Controllers\Api\Admin\AdminOpenMrsController;
+use App\Http\Controllers\Api\Admin\AdminSystemLogController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\CalorieEstimationController;
@@ -37,4 +43,21 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('personal-medical-records', PersonalMedicalRecordController::class)
         ->parameters(['personal-medical-records' => 'personalMedicalRecordId']);
     Route::post('/calorie-estimation', [CalorieEstimationController::class, 'estimate']);
+
+    Route::middleware('role:ADMIN')->prefix('admin')->group(function (): void {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])
+            ->middleware('throttle:admin-dashboard');
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::get('/users/{userId}', [AdminUserController::class, 'show']);
+        Route::get('/users/{userId}/health-records', [AdminUserController::class, 'healthRecords']);
+        Route::get('/users/{userId}/personal-medical-records', [AdminUserController::class, 'personalMedicalRecords']);
+        Route::get('/activity-logs', [AdminActivityLogController::class, 'index']);
+        Route::get('/integration-logs', [AdminIntegrationLogController::class, 'index']);
+        Route::get('/openmrs/config', [AdminOpenMrsController::class, 'getConfig']);
+        Route::put('/openmrs/config', [AdminOpenMrsController::class, 'updateConfig']);
+        Route::post('/openmrs/test-connection', [AdminOpenMrsController::class, 'testConnection'])
+            ->middleware('throttle:admin-test-connection');
+        Route::get('/system-logs', [AdminSystemLogController::class, 'index'])
+            ->middleware('throttle:admin-system-logs');
+    });
 });

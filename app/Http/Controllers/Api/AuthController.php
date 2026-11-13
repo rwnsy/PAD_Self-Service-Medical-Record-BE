@@ -14,6 +14,7 @@ use App\Http\Requests\VerifyPasswordResetCodeRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\VerificationCode;
+use App\Services\ActivityLogService;
 use App\Services\GoogleIdTokenVerifier;
 use App\Services\VerificationCodeService;
 use Illuminate\Http\JsonResponse;
@@ -72,6 +73,10 @@ class AuthController extends Controller
         if ($user->email_verification_pending) {
             return $this->failure('Email verification is required before you can log in.', 403);
         }
+
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($user->user_id, 'LOGIN', 'User logged in via email/password.');
 
         return $this->authenticated($user, 'Login successful.');
     }
@@ -242,11 +247,19 @@ class AuthController extends Controller
             return $this->failure('An existing account requires secure account linking before Google sign-in.', 409);
         }
 
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($user->user_id, 'LOGIN', 'User logged in via Google.');
+
         return $this->authenticated($user, 'Google sign-in successful.');
     }
 
     public function logout(Request $request): JsonResponse
     {
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($request->user()?->user_id, 'LOGOUT', 'User logged out.');
+
         $request->user()->currentAccessToken()?->delete();
 
         return $this->success('Logout successful.');

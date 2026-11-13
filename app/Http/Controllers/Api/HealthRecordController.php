@@ -7,6 +7,7 @@ use App\Http\Requests\IndexHealthRecordRequest;
 use App\Http\Requests\StoreHealthRecordRequest;
 use App\Http\Requests\UpdateHealthRecordRequest;
 use App\Models\HealthRecord;
+use App\Services\ActivityLogService;
 use App\Services\SelfAssessmentService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -66,6 +67,10 @@ class HealthRecordController extends Controller
             'bmi_category' => $selfAssessment->bmiCategory($bmiFullPrecision),
         ]);
 
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($request->user()->user_id, 'HEALTH_RECORD_CREATE', "Health record #{$healthRecord->health_record_id} created.");
+
         return $this->success('Health record created successfully.', $healthRecord, 201);
     }
 
@@ -109,6 +114,10 @@ class HealthRecordController extends Controller
             'bmi_category' => $selfAssessment->bmiCategory($bmiFullPrecision),
         ]);
 
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($request->user()->user_id, 'HEALTH_RECORD_UPDATE', "Health record #{$healthRecordId} updated.");
+
         return $this->success('Health record updated successfully.', $healthRecord->fresh());
     }
 
@@ -121,6 +130,10 @@ class HealthRecordController extends Controller
         }
 
         $healthRecord->delete();
+
+        /** @var ActivityLogService $activityLog */
+        $activityLog = app(ActivityLogService::class);
+        $activityLog->log($request->user()->user_id, 'HEALTH_RECORD_DELETE', "Health record #{$healthRecordId} deleted.");
 
         return $this->success('Health record deleted successfully.');
     }
