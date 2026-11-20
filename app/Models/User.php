@@ -15,7 +15,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['role_id', 'name', 'email', 'password', 'phone', 'nik', 'nik_hash', 'gender', 'date_of_birth', 'google_sub', 'email_verification_pending'])]
+#[Fillable(['role_id', 'name', 'email', 'password', 'phone', 'nik', 'nik_hash', 'gender', 'date_of_birth', 'google_sub', 'email_verification_pending', 'is_active'])]
 #[Hidden(['password', 'remember_token', 'phone', 'nik', 'nik_hash', 'google_sub', 'avatar_path'])]
 class User extends Authenticatable
 {
@@ -41,6 +41,8 @@ class User extends Authenticatable
             'nik' => 'encrypted',
             'email_verification_pending' => 'boolean',
             'date_of_birth' => 'date:Y-m-d',
+            'is_active' => 'boolean',
+            'last_seen_at' => 'datetime',
         ];
     }
 

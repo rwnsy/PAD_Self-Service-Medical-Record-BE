@@ -667,23 +667,34 @@ paths:
     get:
       summary: Retrieve read-only clinical encounter records from OpenMRS
       description: |
-        Queries the configured OpenMRS server using the authenticated user's NIK.
-        Returns empty list if user has no NIK or if no patient matches in OpenMRS.
+        Read-only. Finds the OpenMRS patient whose active (non-voided) identifier exactly equals the
+        authenticated user's NIK and returns one page of that patient's encounters. The patient cannot be
+        chosen through request parameters, and POST/PUT/PATCH/DELETE are not supported on this path (405).
+
+        Every item carries `source: OPENMRS`. Notes written by the user live under
+        `/personal-medical-records` (`source: USER_REPORTED`) and are never merged into this response.
+
+        When no patient can be mapped the response is still HTTP 200 with `data.meta.patient_found: false`,
+        an empty `data.data`, and `data.meta.reason`: `PATIENT_NOT_FOUND` (no NIK, or no exact identifier
+        match) or `PATIENT_AMBIGUOUS` (several patients match; none is selected).
       tags: [Clinical Records (OpenMRS)]
       parameters:
         - in: query
           name: per_page
           schema:
             type: integer
+            minimum: 1
+            maximum: 50
             default: 15
         - in: query
           name: page
           schema:
             type: integer
+            minimum: 1
             default: 1
       responses:
         '200':
-          description: Clinical records list
+          description: Clinical records page, or patient not found
           content:
             application/json:
               schema:
@@ -694,38 +705,43 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: Riwayat rekam medis berhasil diambil.
+                    example: Rekam medis klinik berhasil diambil.
                   data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        encounter_id:
-                          type: string
-                          example: "uuid-encounter-123"
-                        encounter_datetime:
-                          type: string
-                          example: "2026-10-15T09:00:00.000+0000"
-                        encounter_type:
-                          type: string
-                          example: "Pemeriksaan Dokter Umum"
-                        location:
-                          type: string
-                          example: "Poli Umum RSUD"
-                        provider:
-                          type: string
-                          example: "dr. Andi Pratama, Sp.PD"
-                        diagnoses:
-                          type: array
-                          items:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OpenMrsEncounter'
+                      meta:
+                        type: object
+                        properties:
+                          patient_found:
+                            type: boolean
+                          reason:
                             type: string
-                          example: ["Hipertensi Primer", "Dislipidemia"]
-                        observations:
-                          type: array
-                          items:
-                            type: object
+                            enum: [PATIENT_NOT_FOUND, PATIENT_AMBIGUOUS]
+                            description: Present only when patient_found is false.
+                          page:
+                            type: integer
+                          per_page:
+                            type: integer
+                          has_more:
+                            type: boolean
+                            description: True when OpenMRS reports a next page.
+                          source:
+                            type: string
+                            example: openmrs
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '503':
-          description: OpenMRS service unavailable or misconfigured
+          description: |
+            OpenMRS is not configured, unreachable, timed out, rejected the integration account
+            (401/403), returned 404/429/5xx, or returned an invalid response. No details are exposed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
 
   # ==========================================================
   # PERSONAL MEDICAL RECORDS (USER-REPORTED)
@@ -1490,6 +1506,170 @@ components:
         data:
           nullable: true
 
+    # v1.2.0 — New schemas
+    AdminUserDetail:
+      type: object
+      description: Safe user representation for admin endpoints (no PII)
+      properties:
+        user_id:
+          type: integer
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        gender:
+          type: string
+          nullable: true
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        avatar_url:
+          type: string
+          format: uri
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        email_verification_pending:
+          type: boolean
+        is_active:
+          type: boolean
+          description: Whether the account is currently active
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last request timestamp (Asia/Jakarta, throttled to 5-min updates)
+        role:
+          type: string
+          nullable: true
+          example: USER
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AdminSessionItem:
+      type: object
+      description: Sanctum personal access token metadata (no token value or hash)
+      properties:
+        token_id:
+          type: integer
+        name:
+          type: string
+          example: android-api
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "null means no expiry defined"
+        created_at:
+          type: string
+          format: date-time
+
+    AdminLogItem:
+      type: object
+      description: Unified log entry from activity_logs or integration_logs
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+          description: activity_id (integer) or integration_<log_id> (string)
+        timestamp:
+          type: string
+          format: date-time
+        actor:
+          type: string
+          description: User name or "System" if no user
+        actor_email:
+          type: string
+          format: email
+          nullable: true
+        category:
+          type: string
+          enum: [LOGIN, DATA, SYSTEM, ERROR]
+        level:
+          type: string
+          enum: [INFO, WARNING, ERROR]
+        action:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+          enum: [activity_logs, integration_logs]
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        last_page:
+          type: integer
+
+    SystemMetric:
+      type: object
+      description: Health check result for one system component
+      properties:
+        status:
+          type: string
+          enum: [HEALTHY, DEGRADED, DOWN, UNKNOWN]
+        response_time_ms:
+          type: integer
+          nullable: true
+        metadata:
+          type: object
+          nullable: true
+        checked_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AdminNotificationItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          example: AdminNotification
+        data:
+          type: object
+          properties:
+            title:
+              type: string
+            body:
+              type: string
+            component:
+              type: string
+              enum: [application, database, openmrs]
+            previous_status:
+              type: string
+            current_status:
+              type: string
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
     UserProfile:
       type: object
       properties:
@@ -1584,6 +1764,64 @@ components:
           type: string
           format: date
           example: "2026-10-25"
+
+    OpenMrsEncounter:
+      type: object
+      description: Clinical encounter read from OpenMRS. Never created or modified by this API.
+      properties:
+        source:
+          type: string
+          enum: [OPENMRS]
+        encounter_uuid:
+          type: string
+          example: 3f2b7c1e-0000-0000-0000-000000000000
+        encounter_type:
+          type: string
+          nullable: true
+          example: Clinic Visit
+        visit_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date part of the OpenMRS encounterDatetime, as stored by OpenMRS (no timezone conversion).
+          example: "2026-10-15"
+        facility_name:
+          type: string
+          nullable: true
+          example: Klinik Utama
+        location:
+          type: string
+          nullable: true
+          description: Same value as facility_name (kept for backward compatibility).
+        diagnosis:
+          type: string
+          nullable: true
+        complaint:
+          type: string
+          nullable: true
+        observations:
+          type: array
+          items:
+            type: object
+            properties:
+              concept:
+                type: string
+                nullable: true
+              value:
+                nullable: true
+        medications:
+          type: array
+          items:
+            type: object
+            properties:
+              drug:
+                type: string
+                nullable: true
+              dose:
+                nullable: true
+              dose_units:
+                type: string
+                nullable: true
 
     PersonalMedicalRecord:
       type: object
@@ -1938,4 +2176,285 @@ components:
         updated_at:
           type: string
           format: date-time
+
+
+  # ==========================================================
+  # ADMIN — USER ACCOUNT STATUS MANAGEMENT (v1.2.0)
+  # ==========================================================
+  /admin/users/{userId}/status:
+    patch:
+      summary: Update user account status (activate or deactivate)
+      description: |
+        Admin can activate or deactivate a user account. On deactivation, all
+        Sanctum tokens for that user are immediately revoked. Admins cannot
+        deactivate their own account or the last remaining active ADMIN.
+      tags: [Admin - User Management]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+                  example: false
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User account deactivated successfully.
+                  data:
+                    $ref: '#/components/schemas/AdminUserDetail'
+        '403':
+          description: Cannot change own status
+        '404':
+          description: User not found
+        '422':
+          description: Cannot deactivate last active administrator
+
+  /admin/users/{userId}/sessions:
+    get:
+      summary: List active Sanctum tokens (sessions) for a user
+      description: Returns safe token metadata — never plaintext token or hash.
+      tags: [Admin - Session Management]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sessions retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminSessionItem'
+        '404':
+          description: User not found
+    delete:
+      summary: Revoke all Sanctum tokens for a user
+      tags: [Admin - Session Management]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: All sessions revoked
+        '404':
+          description: User not found
+
+  /admin/users/{userId}/sessions/{tokenId}:
+    delete:
+      summary: Revoke a specific Sanctum token for a user
+      tags: [Admin - Session Management]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Session revoked
+        '404':
+          description: Session or user not found
+
+  # ==========================================================
+  # ADMIN — CONSOLIDATED LOG MONITORING (v1.2.0)
+  # ==========================================================
+  /admin/logs:
+    get:
+      summary: Consolidated filtered log view
+      description: |
+        Returns merged entries from activity_logs and integration_logs, filtered
+        by category. Categories: ALL, LOGIN, DATA, SYSTEM, ERROR.
+      tags: [Admin - Logging]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [ALL, LOGIN, DATA, SYSTEM, ERROR]
+            default: ALL
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 25
+            maximum: 100
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Logs retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      category:
+                        type: string
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AdminLogItem'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+
+  # ==========================================================
+  # ADMIN — NOTIFICATIONS (v1.2.0)
+  # ==========================================================
+  /admin/notifications:
+    get:
+      summary: List admin notifications
+      tags: [Admin - Notifications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Notifications retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+
+  /admin/notifications/unread-count:
+    get:
+      summary: Get count of unread admin notifications
+      tags: [Admin - Notifications]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Count retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      unread_count:
+                        type: integer
+
+  /admin/notifications/{notificationId}/read:
+    patch:
+      summary: Mark a notification as read
+      tags: [Admin - Notifications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Marked as read
+        '404':
+          description: Notification not found
+
+  /admin/notifications/read-all:
+    patch:
+      summary: Mark all notifications as read
+      tags: [Admin - Notifications]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All marked as read
+
+# ==========================================================
+# NEW SCHEMAS (v1.2.0 additions)
+# ==========================================================
+# (Append inside components/schemas section — these are standalone additions)
 

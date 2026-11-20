@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Jadwal pembersihan harian file sementara foto estimasi kalori (> 24 jam)
 Schedule::command('calorie-estimates:prune --hours=24')->daily();
+
+// System health check every minute — stores metrics, triggers notifications on status change
+Schedule::command('system:health-check')->everyMinute();
