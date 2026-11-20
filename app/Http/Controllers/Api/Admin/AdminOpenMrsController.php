@@ -133,12 +133,16 @@ class AdminOpenMrsController extends Controller
             ], 422);
         }
 
+        $startTime = microtime(true);
+
         try {
             $response = Http::withoutRedirecting()
                 ->timeout(5)
                 ->connectTimeout(3)
                 ->withBasicAuth($credential['username'], $credential['password'])
                 ->get(rtrim($config->endpoint_url, '/').'/ws/rest/v1/session');
+
+            $responseTimeMs = (int) round((microtime(true) - $startTime) * 1000);
 
             $connected = $response->successful();
             $authenticated = $connected && ($response->json('authenticated') === true);
@@ -149,6 +153,12 @@ class AdminOpenMrsController extends Controller
                     'user_id' => $request->user()->user_id,
                     'operation' => 'CONNECTION_TEST',
                     'status' => $authenticated ? 'SUCCESS' : 'FAILED',
+                    'response_data' => [
+                        'connected' => $connected,
+                        'authenticated' => $authenticated,
+                        'status_code' => $response->status(),
+                        'response_time_ms' => $responseTimeMs,
+                    ],
                     'error_message' => $authenticated ? null : 'Authentication failed with HTTP status '.$response->status(),
                     'attempted_at' => now(),
                 ]);
@@ -165,14 +175,22 @@ class AdminOpenMrsController extends Controller
                     'connected' => $connected,
                     'authenticated' => $authenticated,
                     'status_code' => $response->status(),
+                    'response_time_ms' => $responseTimeMs,
                 ],
             ], $authenticated ? 200 : 422);
         } catch (ConnectionException) {
+            $responseTimeMs = (int) round((microtime(true) - $startTime) * 1000);
+
             try {
                 IntegrationLog::create([
                     'user_id' => $request->user()->user_id,
                     'operation' => 'CONNECTION_TEST',
                     'status' => 'TIMEOUT',
+                    'response_data' => [
+                        'connected' => false,
+                        'authenticated' => false,
+                        'response_time_ms' => $responseTimeMs,
+                    ],
                     'error_message' => 'Connection timed out or failed to reach host.',
                     'attempted_at' => now(),
                 ]);

@@ -8,6 +8,7 @@ use App\Models\HealthRecord;
 use App\Models\IntegrationLog;
 use App\Models\PersonalMedicalRecord;
 use App\Models\User;
+use App\Services\SystemHealthService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,8 @@ class AdminDashboardController extends Controller
         };
 
         $totalUsers = User::query()->count();
+        $activeUsers = User::query()->where('is_active', true)->count();
+        $inactiveUsers = $totalUsers - $activeUsers;
 
         $newUsers = User::query()
             ->where('created_at', '>=', $from)
@@ -58,6 +61,10 @@ class AdminDashboardController extends Controller
             ->where('created_at', '>=', $from)
             ->count();
 
+        /** @var SystemHealthService $healthService */
+        $healthService = app(SystemHealthService::class);
+        $systemHealth = $healthService->getLatestMetrics();
+
         return response()->json([
             'success' => true,
             'message' => 'Admin dashboard data retrieved successfully.',
@@ -65,6 +72,8 @@ class AdminDashboardController extends Controller
                 'period' => $period,
                 'users' => [
                     'total' => $totalUsers,
+                    'active' => $activeUsers,
+                    'inactive' => $inactiveUsers,
                     'new_in_period' => $newUsers,
                 ],
                 'health_records' => [
@@ -81,6 +90,7 @@ class AdminDashboardController extends Controller
                 'activity_logs' => [
                     'count_in_period' => $activityCount,
                 ],
+                'system_health' => $systemHealth,
             ],
         ]);
     }

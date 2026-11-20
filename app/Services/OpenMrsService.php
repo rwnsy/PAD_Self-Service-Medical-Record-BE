@@ -7,10 +7,14 @@ use App\Models\OpenmrsConfig;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use RuntimeException;
 
 class OpenMrsService
 {
+    /** Tag exception ketika lebih dari satu pasien OpenMRS cocok dengan identifier. */
+    public const PATIENT_AMBIGUOUS = 'patient_ambiguous';
+
     /**
      * Ambil konfigurasi OpenMRS aktif dari database.
      * Lempar RuntimeException jika tidak ada konfigurasi aktif.
@@ -27,103 +31,118 @@ class OpenMrsService
     }
 
     /**
-     * Cari UUID pasien OpenMRS berdasarkan identifier yang sudah dipetakan ke user.
-     * Saat ini menggunakan NIK sebagai identifier utama.
-     * Kembalikan null jika pasien tidak ditemukan.
+     * Cari UUID pasien OpenMRS berdasarkan NIK user (identifier utama).
+     *
+     * Hanya pasien yang memiliki identifier (non-voided) persis sama dengan NIK yang diterima.
+     * Kembalikan null jika tidak ada yang cocok; lempar PATIENT_AMBIGUOUS jika lebih dari satu pasien cocok.
      */
     public function findPatientUuid(OpenmrsConfig $config, User $user): ?string
     {
-        // Credential disimpan terenkripsi sebagai JSON: {"username":"...","password":"..."}
-        $credential = json_decode((string) $config->credential, true);
-
-        if (! is_array($credential) || ! isset($credential['username'], $credential['password'])) {
-            throw new RuntimeException('OpenMRS credential format is invalid.');
-        }
-
-        // Gunakan NIK sebagai identifier utama untuk lookup pasien
         $nik = $user->nik; // accessor mendekripsi otomatis
         if (! is_string($nik) || $nik === '') {
             return null;
         }
 
-        try {
-            $response = Http::withBasicAuth($credential['username'], $credential['password'])
-                ->timeout(10)
-                ->get(rtrim($config->endpoint_url, '/').'/ws/rest/v1/patient', [
-                    'identifier' => $nik,
-                    'v' => 'simple',
-                ]);
-        } catch (ConnectionException $e) {
-            throw new RuntimeException('OpenMRS connection failed: '.$e->getMessage());
+        $json = $this->get($config, '/ws/rest/v1/patient', [
+            'identifier' => $nik,
+            'v' => 'custom:(uuid,identifiers:(identifier,voided))',
+        ]);
+
+        // Server bisa mengabaikan filter atau mencocokkan sebagian: jangan percaya hasil mentah.
+        $matches = array_filter($json['results'], fn ($patient) => is_array($patient) && $this->hasIdentifier($patient, $nik));
+        $uuids = array_values(array_unique(array_column($matches, 'uuid')));
+
+        if (count($uuids) > 1) {
+            throw new RuntimeException(self::PATIENT_AMBIGUOUS);
         }
 
-        if (! $response->successful()) {
-            throw new RuntimeException('OpenMRS patient lookup returned status '.$response->status());
-        }
-
-        $results = $response->json('results', []);
-
-        // Beberapa konfigurasi OpenMRS REST API menggunakan parameter 'q' untuk mencari identifier
-        if (empty($results)) {
-            try {
-                $fallback = Http::withBasicAuth($credential['username'], $credential['password'])
-                    ->timeout(10)
-                    ->get(rtrim($config->endpoint_url, '/').'/ws/rest/v1/patient', [
-                        'q' => $nik,
-                        'v' => 'simple',
-                    ]);
-
-                if ($fallback->successful()) {
-                    $results = $fallback->json('results', []);
-                }
-            } catch (ConnectionException $e) {
-                // Biarkan results tetap kosong jika fallback timeout
-            }
-        }
-
-        if (empty($results)) {
-            return null;
-        }
-
-        return $results[0]['uuid'] ?? null;
+        return $uuids[0] ?? null;
     }
 
     /**
-     * Ambil riwayat kunjungan (encounters) pasien dari OpenMRS.
-     * Kembalikan array kunjungan yang sudah di-format.
+     * Ambil riwayat kunjungan (encounters) pasien dari OpenMRS, satu halaman.
      *
-     * @return array<int, array<string, mixed>>
+     * @return array{items: array<int, array<string, mixed>>, has_more: bool}
      */
     public function getPatientEncounters(OpenmrsConfig $config, string $patientUuid, int $page = 1, int $perPage = 15): array
+    {
+        $json = $this->get($config, '/ws/rest/v1/encounter', [
+            'patient' => $patientUuid,
+            'v' => 'full',
+            'startIndex' => ($page - 1) * $perPage,
+            'limit' => $perPage,
+        ]);
+
+        $links = is_array($json['links'] ?? null) ? $json['links'] : [];
+
+        return [
+            'items' => array_map(
+                fn ($encounter) => $this->formatEncounter($encounter),
+                array_values(array_filter($json['results'], 'is_array')),
+            ),
+            'has_more' => in_array('next', array_column($links, 'rel'), true),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $patient
+     */
+    private function hasIdentifier(array $patient, string $identifier): bool
+    {
+        $identifiers = is_array($patient['identifiers'] ?? null) ? $patient['identifiers'] : [];
+
+        foreach ($identifiers as $item) {
+            if (is_array($item) && ($item['voided'] ?? false) !== true && ($item['identifier'] ?? null) === $identifier) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * GET read-only ke OpenMRS REST; hanya mengembalikan JSON yang memiliki array `results`.
+     * Exception hanya membawa tag singkat (mis. `http_401`) agar URL, NIK, dan kredensial tidak ikut bocor.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
+    private function get(OpenmrsConfig $config, string $path, array $query): array
     {
         $credential = json_decode((string) $config->credential, true);
 
         if (! is_array($credential) || ! isset($credential['username'], $credential['password'])) {
-            throw new RuntimeException('OpenMRS credential format is invalid.');
+            throw new RuntimeException('credential_invalid');
         }
 
-        $startIndex = ($page - 1) * $perPage;
+        try {
+            app(OpenMrsUrlValidator::class)->validate($config->endpoint_url);
+        } catch (InvalidArgumentException) {
+            throw new RuntimeException('endpoint_rejected');
+        }
 
         try {
-            $response = Http::withBasicAuth($credential['username'], $credential['password'])
+            $response = Http::withoutRedirecting()
+                ->connectTimeout(3)
                 ->timeout(15)
-                ->get(rtrim($config->endpoint_url, '/').'/ws/rest/v1/encounter', [
-                    'patient' => $patientUuid,
-                    'v' => 'full',
-                    'startIndex' => $startIndex,
-                    'limit' => $perPage,
-                ]);
-        } catch (ConnectionException $e) {
-            throw new RuntimeException('OpenMRS connection failed: '.$e->getMessage());
+                ->acceptJson()
+                ->withBasicAuth($credential['username'], $credential['password'])
+                ->get(rtrim($config->endpoint_url, '/').$path, $query);
+        } catch (ConnectionException) {
+            throw new RuntimeException('connection_failed');
         }
 
         if (! $response->successful()) {
-            throw new RuntimeException('OpenMRS encounter fetch returned status '.$response->status());
+            throw new RuntimeException('http_'.$response->status());
         }
 
-        $encounters = $response->json('results', []);
+        $json = $response->json();
 
-        return array_map(fn ($encounter) => $this->formatEncounter($encounter), $encounters);
+        if (! is_array($json) || ! is_array($json['results'] ?? null)) {
+            throw new RuntimeException('invalid_response');
+        }
+
+        return $json;
     }
 
     /**
@@ -172,17 +191,18 @@ class OpenMrsService
             }
         }
 
-        // Ambil daftar obat dari orders jika ada
+        // Ambil daftar obat dari orders jika ada (array_values: filter meninggalkan indeks bolong -> JSON object)
         $orders = $encounter['orders'] ?? [];
-        $medications = array_map(fn ($order) => [
+        $medications = array_values(array_map(fn ($order) => [
             'drug' => $order['drug']['display'] ?? ($order['concept']['display'] ?? null),
             'dose' => $order['dose'] ?? null,
             'dose_units' => $order['doseUnits']['display'] ?? null,
-        ], is_array($orders) ? array_filter($orders, fn ($o) => ($o['type'] ?? '') === 'drugorder') : []);
+        ], is_array($orders) ? array_filter($orders, fn ($o) => ($o['type'] ?? '') === 'drugorder') : []));
 
         $facilityName = $location ? ($location['display'] ?? null) : null;
 
         return [
+            'source' => 'OPENMRS',
             'encounter_uuid' => $encounter['uuid'] ?? null,
             'encounter_type' => $encounter['encounterType']['display'] ?? null,
             'visit_date' => isset($encounter['encounterDatetime'])

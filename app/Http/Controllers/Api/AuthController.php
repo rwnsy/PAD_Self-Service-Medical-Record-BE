@@ -74,6 +74,10 @@ class AuthController extends Controller
             return $this->failure('Email verification is required before you can log in.', 403);
         }
 
+        if ($user->is_active === false) {
+            return $this->failure('Your account has been deactivated. Please contact an administrator.', 403);
+        }
+
         /** @var ActivityLogService $activityLog */
         $activityLog = app(ActivityLogService::class);
         $activityLog->log($user->user_id, 'LOGIN', 'User logged in via email/password.');
@@ -245,6 +249,10 @@ class AuthController extends Controller
 
         if ($user === null) {
             return $this->failure('An existing account requires secure account linking before Google sign-in.', 409);
+        }
+
+        if ($user->is_active === false) {
+            return $this->failure('Your account has been deactivated. Please contact an administrator.', 403);
         }
 
         /** @var ActivityLogService $activityLog */
